@@ -399,26 +399,33 @@ class XMLWebOptimiser(object):
         :param get_image_thumbnail: function to get image thumbnail from given file
             referenced in XML
         """
+        def add_alternative_to_anternatives_tag(image_parent, alternative_attr_values):
+            new_alternative = etree.Element(image_element.tag)
+            for attrb, value in alternative_attr_values:
+                new_alternative.set(attrb, value)
+            if image_parent.tag == "alternatives":
+                image_parent.append(new_alternative)
+            else:
+                alternative_node = etree.Element("alternatives")
+                alternative_node.tail = image_element.tail
+                image_element.tail = None
+                alternative_node.append(image_element)
+                alternative_node.append(new_alternative)
+                image_parent.append(alternative_node)
+
         for image_filename, image_element in self._get_all_images_to_optimise():
             try:
                 new_filename = get_optimised_image(image_filename)
             except exceptions.SPPackageError as exc:
                 LOGGER.error("Error optimising image: %s", str(exc))
             else:
-                new_alternative = etree.Element(image_element.tag)
-                new_alternative.set("{http://www.w3.org/1999/xlink}href", new_filename)
-                new_alternative.set("specific-use", "scielo-web")
-
-                image_parent = image_element.getparent()
-                if image_parent.tag == "alternatives":
-                    image_parent.append(new_alternative)
-                else:
-                    alternative_node = etree.Element("alternatives")
-                    alternative_node.tail = image_element.tail
-                    image_element.tail = None
-                    alternative_node.append(image_element)
-                    alternative_node.append(new_alternative)
-                    image_parent.append(alternative_node)
+                alternative_attr_values = (
+                    ("{http://www.w3.org/1999/xlink}href", new_filename),
+                    ("specific-use", "scielo-web"),
+                )
+                add_alternative_to_anternatives_tag(
+                    image_element.getparent(), alternative_attr_values
+                )
 
         for image_filename, image_element in self._get_all_images_to_thumbnail():
             try:
@@ -426,21 +433,14 @@ class XMLWebOptimiser(object):
             except exceptions.SPPackageError as exc:
                 LOGGER.error("Error creating image thumbnail: %s", str(exc))
             else:
-                new_alternative = etree.Element(image_element.tag)
-                new_alternative.set("{http://www.w3.org/1999/xlink}href", new_filename)
-                new_alternative.set("specific-use", "scielo-web")
-                new_alternative.set("content-type", "scielo-267x140")
-
-                image_parent = image_element.getparent()
-                if image_parent.tag == "alternatives":
-                    image_parent.append(new_alternative)
-                else:
-                    alternative_node = etree.Element("alternatives")
-                    alternative_node.tail = image_element.tail
-                    image_element.tail = None
-                    alternative_node.append(image_element)
-                    alternative_node.append(new_alternative)
-                    image_parent.append(alternative_node)
+                alternative_attr_values = (
+                    ("{http://www.w3.org/1999/xlink}href", new_filename),
+                    ("specific-use", "scielo-web"),
+                    ("content-type", "scielo-267x140"),
+                )
+                add_alternative_to_anternatives_tag(
+                    image_element.getparent(), alternative_attr_values
+                )
 
         return self.xml_file
 
