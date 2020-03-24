@@ -221,6 +221,22 @@ class TestWebImageGenerator(unittest.TestCase):
             )
         )
 
+    def test_convert2png_to_destination_path(self):
+        destination_path = tempfile.mkdtemp(".")
+        web_image_generator = utils.WebImageGenerator(
+            "image_tiff_2.tif", self.extracted_package
+        )
+        web_image_generator.convert2png(destination_path)
+
+        is_conversion_ok = os.path.exists(
+            os.path.join(
+                destination_path,
+                os.path.splitext("image_tiff_2.tif")[0] + ".png",
+            )
+        )
+        shutil.rmtree(destination_path)
+        self.assertTrue(is_conversion_ok)
+
     def test_create_thumbnail(self):
         filename = os.path.join(self.extracted_package, "image_tiff_1.png")
         create_image_file(filename, "PNG")
@@ -231,6 +247,20 @@ class TestWebImageGenerator(unittest.TestCase):
         web_image_generator.create_thumbnail()
         thumbnail_filename = os.path.splitext(filename)[0] + ".thumbnail.jpg"
         self.assertTrue(os.path.exists(thumbnail_filename))
+
+    def test_create_thumbnail_to_destination_path(self):
+        destination_path = tempfile.mkdtemp(".")
+        filename = os.path.join(self.extracted_package, "image_tiff_1.png")
+        create_image_file(filename, "PNG")
+
+        web_image_generator = utils.WebImageGenerator(
+            "image_tiff_1.png", self.extracted_package
+        )
+        web_image_generator.create_thumbnail()
+        thumbnail_filename = os.path.splitext(filename)[0] + ".thumbnail.jpg"
+        is_thumbnail_ok = os.path.exists(thumbnail_filename)
+        shutil.rmtree(destination_path)
+        self.assertTrue(is_thumbnail_ok)
 
 
 class TestXMLWebOptimiser(unittest.TestCase):
