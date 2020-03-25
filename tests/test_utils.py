@@ -325,11 +325,30 @@ class TestXMLWebOptimiser(unittest.TestCase):
             parser=etree.XMLParser(remove_blank_text=True),
         )
         self.xml_filename = "1234-5678-rctb-45-05-0110.xml"
-        self.xml_web_optimiser = utils.XMLWebOptimiser(self.xml_file, self.xml_filename)
+        self.xml_web_optimiser = utils.XMLWebOptimiser(
+            self.xml_file,
+            self.xml_filename,
+            self.mock_get_optimised_image,
+            self.mock_get_image_thumbnail,
+        )
+
+    def mock_get_optimised_image(self, filename):
+        return os.path.splitext(filename)[0] + ".png"
+
+    def mock_get_image_thumbnail(self, filename):
+        return os.path.splitext(filename)[0] + ".thumbnail.jpg"
 
     def test_create_XMLWebOptimiser(self):
         self.assertEqual(self.xml_web_optimiser.xml_file, self.xml_file)
         self.assertEqual(self.xml_web_optimiser.xml_filename, self.xml_filename)
+        self.assertEqual(
+            self.xml_web_optimiser.get_optimised_image,
+            self.mock_get_optimised_image,
+        )
+        self.assertEqual(
+            self.xml_web_optimiser.get_optimised_image,
+            self.mock_get_optimised_image,
+        )
 
     def test_get_all_images_to_optimise(self):
         images = self.xml_web_optimiser._get_all_images_to_optimise()
@@ -355,11 +374,7 @@ class TestXMLWebOptimiser(unittest.TestCase):
             self.assertEqual(image_filename, expected_filename)
 
     def test_get_optimised_xml_ok(self):
-        def mock_get_optimised_image(filename):
-            return os.path.splitext(filename)[0] + ".png"
 
-        def mock_get_image_thumbnail(filename):
-            return os.path.splitext(filename)[0] + ".thumbnail.jpg"
 
         expected = [
             (
@@ -373,9 +388,7 @@ class TestXMLWebOptimiser(unittest.TestCase):
             ),
             ("1234-5678-rctb-45-05-0110-e04.png",),
         ]
-        xml_result = self.xml_web_optimiser.get_optimised_xml(
-            mock_get_optimised_image, mock_get_image_thumbnail
-        )
+        xml_result = self.xml_web_optimiser.get_optimised_xml()
         for alternatives, expected_files in zip(
             xml_result.findall(".//alternatives"), expected
         ):

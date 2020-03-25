@@ -376,11 +376,17 @@ class XMLWebOptimiser(object):
 
     :param xml_file: XML document, instance of ``etree._ElementTree``
     :param xml_filename: XML filename
+    :param get_optimised_image: function to get optimised image file from given file
+        referenced in XML
+    :param get_image_thumbnail: function to get image thumbnail from given file
+        referenced in XML
     """
 
-    def __init__(self, xml_file, xml_filename):
+    def __init__(self, xml_file, xml_filename, get_optimised_image, get_image_thumbnail):
         self.xml_file = xml_file
         self.xml_filename = xml_filename
+        self.get_optimised_image = get_optimised_image
+        self.get_image_thumbnail = get_image_thumbnail
 
     def _get_all_images_to_optimise(self):
         def is_image_to_optimise(image):
@@ -428,14 +434,8 @@ class XMLWebOptimiser(object):
                 )
                 yield image_filename, alternatives[0]
 
-    def get_optimised_xml(self, get_optimised_image, get_image_thumbnail):
-        """Get optimised XML, with WEB alternatives for images.
-
-        :param get_optimised_image: function to get optimised image file from given file
-            referenced in XML
-        :param get_image_thumbnail: function to get image thumbnail from given file
-            referenced in XML
-        """
+    def get_optimised_xml(self):
+        """Get optimised XML, with WEB alternatives for images."""
         def add_alternative_to_anternatives_tag(image_parent, alternative_attr_values):
             new_alternative = etree.Element(image_element.tag)
             for attrb, value in alternative_attr_values:
@@ -451,33 +451,29 @@ class XMLWebOptimiser(object):
                 image_parent.append(alternative_node)
 
         for image_filename, image_element in self._get_all_images_to_optimise():
-            try:
-                new_filename = get_optimised_image(image_filename)
-            except exceptions.SPPackageError as exc:
-                LOGGER.error("Error optimising image: %s", str(exc))
-            else:
-                alternative_attr_values = (
-                    ("{http://www.w3.org/1999/xlink}href", new_filename),
-                    ("specific-use", "scielo-web"),
-                )
-                add_alternative_to_anternatives_tag(
-                    image_element.getparent(), alternative_attr_values
-                )
+            if self.get_optimised_image is not None:
+                new_filename = self.get_optimised_image(image_filename)
+                if new_filename is not None:
+                    alternative_attr_values = (
+                        ("{http://www.w3.org/1999/xlink}href", new_filename),
+                        ("specific-use", "scielo-web"),
+                    )
+                    add_alternative_to_anternatives_tag(
+                        image_element.getparent(), alternative_attr_values
+                    )
 
         for image_filename, image_element in self._get_all_images_to_thumbnail():
-            try:
-                new_filename = get_image_thumbnail(image_filename)
-            except exceptions.SPPackageError as exc:
-                LOGGER.error("Error creating image thumbnail: %s", str(exc))
-            else:
-                alternative_attr_values = (
-                    ("{http://www.w3.org/1999/xlink}href", new_filename),
-                    ("specific-use", "scielo-web"),
-                    ("content-type", "scielo-267x140"),
-                )
-                add_alternative_to_anternatives_tag(
-                    image_element.getparent(), alternative_attr_values
-                )
+            if self.get_image_thumbnail is not None:
+                new_filename = self.get_image_thumbnail(image_filename)
+                if new_filename is not None:
+                    alternative_attr_values = (
+                        ("{http://www.w3.org/1999/xlink}href", new_filename),
+                        ("specific-use", "scielo-web"),
+                        ("content-type", "scielo-267x140"),
+                    )
+                    add_alternative_to_anternatives_tag(
+                        image_element.getparent(), alternative_attr_values
+                    )
 
         return self.xml_file
 
@@ -518,10 +514,13 @@ class SPPackage(object):
 
     def _optimise_xml_to_web(self, parsed_xml, xml_filename):
 
-        xml_web_optimiser = XMLWebOptimiser(parsed_xml, xml_filename)
-        optimised_xml = xml_web_optimiser.get_optimised_xml(
-            self.create_optimised_image, self.create_image_thumbnail
+        xml_web_optimiser = XMLWebOptimiser(
+            parsed_xml,
+            xml_filename,
+            self.create_optimised_image,
+            self.create_image_thumbnail,
         )
+        optimised_xml = xml_web_optimiser.get_optimised_xml()
         with open(
             os.path.join(self._extracted_package, xml_filename), "wb"
         ) as xml_file:
