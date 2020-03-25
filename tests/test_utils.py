@@ -374,8 +374,75 @@ class TestXMLWebOptimiser(unittest.TestCase):
             self.assertEqual(image_filename, expected_filename)
 
     def test_get_optimised_xml_ok(self):
+        expected = [
+            (
+                "1234-5678-rctb-45-05-0110-e01.png",
+                "1234-5678-rctb-45-05-0110-e01.thumbnail.jpg",
+            ),
+            ("1234-5678-rctb-45-05-0110-e02.png",),
+            (
+                "1234-5678-rctb-45-05-0110-gf03.png",
+                "1234-5678-rctb-45-05-0110-gf03.thumbnail.jpg",
+            ),
+            ("1234-5678-rctb-45-05-0110-e04.png",),
+        ]
+        xml_result = self.xml_web_optimiser.get_optimised_xml()
+        for alternatives, expected_files in zip(
+            xml_result.findall(".//alternatives"), expected
+        ):
+            path = './graphic[@specific-use="scielo-web"]|./inline-graphic[@specific-use="scielo-web"]'
+            for image, expected_href in zip(alternatives.xpath(path), expected_files):
+                self.assertEqual(
+                    image.attrib["{http://www.w3.org/1999/xlink}href"], expected_href
+                )
 
 
+class TestXMLWebOptimiserGraphicsWithNoFileExtention(unittest.TestCase):
+    def setUp(self):
+        graphic_01 = '<graphic xlink:href="1234-5678-rctb-45-05-0110-e01"/>'
+        graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02"/>'
+        self.xml_file = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
+        )
+        self.xml_filename = "1234-5678-rctb-45-05-0110.xml"
+        self.xml_web_optimiser = utils.XMLWebOptimiser(
+            self.xml_file,
+            self.xml_filename,
+            self.mock_get_optimised_image,
+            self.mock_get_image_thumbnail,
+        )
+
+    def mock_get_optimised_image(self, filename):
+        return os.path.splitext(filename)[0] + ".png"
+
+    def mock_get_image_thumbnail(self, filename):
+        return os.path.splitext(filename)[0] + ".thumbnail.jpg"
+
+    def test_get_all_images_to_optimise(self):
+        images = self.xml_web_optimiser._get_all_images_to_optimise()
+        expected = [
+            "1234-5678-rctb-45-05-0110-e01",
+            "1234-5678-rctb-45-05-0110-e02",
+            "1234-5678-rctb-45-05-0110-e04.tif",
+        ]
+        result = [image for image in images]
+        self.assertEqual(len(result), len(expected))
+        for image, expected_filename in zip(result, expected):
+            image_filename, image_element = image
+            self.assertEqual(image_filename, expected_filename)
+
+    def test_get_all_images_to_thumbnail(self):
+        images = self.xml_web_optimiser._get_all_images_to_thumbnail()
+
+        expected = ["1234-5678-rctb-45-05-0110-e01"]
+        result = [image for image in images]
+        self.assertEqual(len(result), len(expected))
+        for image, expected_filename in zip(result, expected):
+            image_filename, image_element = image
+            self.assertEqual(image_filename, expected_filename)
+
+    def test_get_optimised_xml_ok(self):
         expected = [
             (
                 "1234-5678-rctb-45-05-0110-e01.png",
