@@ -466,6 +466,71 @@ class TestXMLWebOptimiserGraphicsWithNoFileExtention(unittest.TestCase):
                 )
 
 
+class TestXMLWebOptimiserValidations(unittest.TestCase):
+    def setUp(self):
+        self.xml_filename = "1234-5678-rctb-45-05-0110.xml"
+
+    def mock_get_optimised_image(self, filename):
+        return os.path.splitext(filename)[0] + ".png"
+
+    def mock_get_image_thumbnail(self, filename):
+        return os.path.splitext(filename)[0] + ".thumbnail.jpg"
+
+    def test_get_all_images_to_optimise_does_not_return_optimised_images(self):
+        graphic_01 = '<graphic xlink:href="1234-5678-rctb-45-05-0110-e01.jpg"/>'
+        graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.gif"/>'
+        xml_file = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
+        )
+        xml_web_optimiser = utils.XMLWebOptimiser(
+            xml_file,
+            self.xml_filename,
+            self.mock_get_optimised_image,
+            self.mock_get_image_thumbnail,
+        )
+        images = xml_web_optimiser._get_all_images_to_optimise()
+        expected = ["1234-5678-rctb-45-05-0110-e04.tif"]
+        result = [image for image in images]
+        self.assertEqual(len(result), len(expected))
+        image_filename, __ = result[0]
+        self.assertEqual(expected[0], image_filename)
+
+    def test_get_all_images_to_thumbnail_does_not_return_images_with_thumbnail(self):
+        graphic_01 = ''
+        graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.gif"/>'
+        xml_file = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
+        )
+        xml_web_optimiser = utils.XMLWebOptimiser(
+            xml_file,
+            self.xml_filename,
+            self.mock_get_optimised_image,
+            self.mock_get_image_thumbnail,
+        )
+        images = xml_web_optimiser._get_all_images_to_thumbnail()
+        result = [image for image in images]
+        self.assertEqual(len(result), 0)
+
+    def test_get_optimised_xml_no_get_optimised_image_and_get_image_thumbnail(self):
+        graphic_01 = '<graphic xlink:href="1234-5678-rctb-45-05-0110-e01.tif"/>'
+        graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.tiff"/>'
+        xml_file = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
+        )
+        xml_web_optimiser = utils.XMLWebOptimiser(
+            xml_file, self.xml_filename, None, None
+        )
+        xml_result = xml_web_optimiser.get_optimised_xml()
+        xml_test = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
+        )
+        self.assertEqual(etree.tostring(xml_test), etree.tostring(xml_result))
+
+
 class TestSPPackage(unittest.TestCase):
     def setUp(self):
         self.temp_package_dir = tempfile.mkdtemp(".")
