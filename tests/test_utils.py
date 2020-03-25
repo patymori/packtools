@@ -207,7 +207,33 @@ class TestWebImageGenerator(unittest.TestCase):
             os.path.join(self.extracted_package, "image_tiff_1.tiff"),
         )
 
-    def test_convert2png(self):
+    def test_convert2png_file_does_not_exist(self):
+        web_image_generator = utils.WebImageGenerator(
+            "no_file.tif", self.extracted_package
+        )
+        self.assertRaises(
+            exceptions.WebImageGeneratorError, web_image_generator.convert2png
+        )
+        self.assertFalse(
+            os.path.exists(os.path.join(self.extracted_package, "no_file.png"))
+        )
+
+    def test_convert2png_no_image_file(self):
+        text_file_path = os.path.join(self.extracted_package, "file.txt")
+        with open(text_file_path, "w") as fp:
+            fp.write("Text file content.")
+
+        web_image_generator = utils.WebImageGenerator(
+            "file.txt", self.extracted_package
+        )
+        self.assertRaises(
+            exceptions.WebImageGeneratorError, web_image_generator.convert2png
+        )
+        self.assertFalse(
+            os.path.exists(os.path.join(self.extracted_package, "file.png"))
+        )
+
+    def test_convert2png_ok(self):
         web_image_generator = utils.WebImageGenerator(
             "image_tiff_2.tif", self.extracted_package
         )
@@ -237,7 +263,33 @@ class TestWebImageGenerator(unittest.TestCase):
         shutil.rmtree(destination_path)
         self.assertTrue(is_conversion_ok)
 
-    def test_create_thumbnail(self):
+    def test_create_thumbnail_file_does_not_exist(self):
+        web_image_generator = utils.WebImageGenerator(
+            "no_file.tif", self.extracted_package
+        )
+        self.assertRaises(
+            exceptions.WebImageGeneratorError, web_image_generator.create_thumbnail
+        )
+        self.assertFalse(
+            os.path.exists(os.path.join(self.extracted_package, "no_file.png"))
+        )
+
+    def test_create_thumbnail_no_image_file(self):
+        text_file_path = os.path.join(self.extracted_package, "file.txt")
+        with open(text_file_path, "w") as fp:
+            fp.write("Text file content.")
+
+        web_image_generator = utils.WebImageGenerator(
+            "file.txt", self.extracted_package
+        )
+        self.assertRaises(
+            exceptions.WebImageGeneratorError, web_image_generator.create_thumbnail
+        )
+        self.assertFalse(
+            os.path.exists(os.path.join(self.extracted_package, "file.png"))
+        )
+
+    def test_create_thumbnail_ok(self):
         filename = os.path.join(self.extracted_package, "image_tiff_1.png")
         create_image_file(filename, "PNG")
 
