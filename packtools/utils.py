@@ -416,10 +416,9 @@ class XMLWebOptimiser(object):
                 yield image.attrib["{http://www.w3.org/1999/xlink}href"], image
 
     def _get_all_images_to_thumbnail(self):
-        path = "//graphic[@xlink:href]"
         namespaces = {"xlink": "http://www.w3.org/1999/xlink"}
-        images = self.xml_file.xpath(path, namespaces=namespaces)
-        images_parents = {image.getparent() for image in images}
+        images = self.xml_file.xpath("//graphic[@xlink:href]", namespaces=namespaces)
+        images_parents = (image.getparent() for image in images)
         for images_parent in images_parents:
             alternatives = images_parent.xpath(
                 "./graphic[@xlink:href]", namespaces=namespaces
@@ -536,7 +535,8 @@ class SPPackage(object):
         else:
             optimised_file_path = do_optimisation()
             os.remove(os.path.join(self._extracted_package, image_to_optimise))
-            return os.path.split(optimised_file_path)[-1]
+            if optimised_file_path is not None:
+                return os.path.split(optimised_file_path)[-1]
 
     def create_optimised_image(self, image_to_optimise):
         """Create WEB image alternative of an image in SciELO Publishing Package.
