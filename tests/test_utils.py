@@ -8,11 +8,12 @@ import io
 import shutil
 
 from PIL import Image
+from lxml import etree
 
 from packtools import utils, exceptions
 
 
-BASE_XML = b"""<?xml version="1.0" encoding="UTF-8"?>
+BASE_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <article xmlns:xlink="http://www.w3.org/1999/xlink"
      dtd-version="1.0"
      article-type="research-article"
@@ -25,9 +26,9 @@ BASE_XML = b"""<?xml version="1.0" encoding="UTF-8"?>
 <sec>
   <p>The Eh measurements... <xref ref-type="disp-formula" rid="e01">equation 1</xref>(in mV):</p>
   <disp-formula id="e01">
-    <graphic xlink:href="1234-5678-rctb-45-05-0110-e01.tif"/>
+    {}
   </disp-formula>
-  <p>We also used an... <inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.tiff"/>.</p>
+  <p>We also used an... {}.</p>
 </sec>
 <fig id="f03">
     <label>Fig. 3</label>
@@ -317,7 +318,12 @@ class TestWebImageGenerator(unittest.TestCase):
 
 class TestXMLWebOptimiser(unittest.TestCase):
     def setUp(self):
-        self.xml_file = utils.XML(io.BytesIO(BASE_XML))
+        graphic_01 = '<graphic xlink:href="1234-5678-rctb-45-05-0110-e01.tif"/>'
+        graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.tiff"/>'
+        self.xml_file = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
+        )
         self.xml_filename = "1234-5678-rctb-45-05-0110.xml"
         self.xml_web_optimiser = utils.XMLWebOptimiser(self.xml_file, self.xml_filename)
 
@@ -336,7 +342,7 @@ class TestXMLWebOptimiser(unittest.TestCase):
         self.assertEqual(len(result), len(expected))
         for image, expected_filename in zip(result, expected):
             image_filename, image_element = image
-            self.assertEqual(expected_filename, image_filename)
+            self.assertEqual(image_filename, expected_filename)
 
     def test_get_all_images_to_thumbnail(self):
         images = self.xml_web_optimiser._get_all_images_to_thumbnail()
@@ -346,7 +352,7 @@ class TestXMLWebOptimiser(unittest.TestCase):
         self.assertEqual(len(result), len(expected))
         for image, expected_filename in zip(result, expected):
             image_filename, image_element = image
-            self.assertEqual(expected_filename, image_filename)
+            self.assertEqual(image_filename, expected_filename)
 
     def test_get_optimised_xml_ok(self):
         def mock_get_optimised_image(filename):
@@ -371,7 +377,7 @@ class TestXMLWebOptimiser(unittest.TestCase):
             mock_get_optimised_image, mock_get_image_thumbnail
         )
         for alternatives, expected_files in zip(
-            xml_result.findall("//alternatives"), expected
+            xml_result.findall(".//alternatives"), expected
         ):
             path = './graphic[@specific-use="scielo-web"]|./inline-graphic[@specific-use="scielo-web"]'
             for image, expected_href in zip(alternatives.xpath(path), expected_files):
@@ -391,7 +397,10 @@ class TestSPPackage(unittest.TestCase):
         with zipfile.ZipFile(self.tmp_package, "a") as self.archive:
             xml_file_path = os.path.join(self.temp_img_dir, "somedocument.xml")
             with open(xml_file_path, "wb") as xml_file:
-                xml_file.write(BASE_XML)
+                graphic_01 = '<graphic xlink:href="1234-5678-rctb-45-05-0110-e01.tif"/>'
+                graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.tiff"/>'
+                xml_content = BASE_XML.format(graphic_01, graphic_02)
+                xml_file.write(xml_content.encode("utf-8"))
             self.archive.write(xml_file_path, "somedocument.xml")
             image_files = (
                 ("1234-5678-rctb-45-05-0110-e01.tif", "TIFF"),
@@ -427,9 +436,13 @@ class TestSPPackage(unittest.TestCase):
         self.assertEqual(package._extracted_package, "/tmp/test")
 
     def test_optimise_xml_to_web_optimised_images(self):
-        self.sp_package._optimise_xml_to_web(
-            utils.XML(io.BytesIO(BASE_XML)), "somedocument.xml"
+        graphic_01 = '<graphic xlink:href="1234-5678-rctb-45-05-0110-e01.tif"/>'
+        graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.tiff"/>'
+        xml_file = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
         )
+        self.sp_package._optimise_xml_to_web(xml_file, "somedocument.xml")
 
         expected = [
             "1234-5678-rctb-45-05-0110-e01.png",
@@ -447,9 +460,13 @@ class TestSPPackage(unittest.TestCase):
         )
 
     def test_optimise_xml_to_web_optimises_xmls(self):
-        self.sp_package._optimise_xml_to_web(
-            utils.XML(io.BytesIO(BASE_XML)), "somedocument.xml"
+        graphic_01 = '<graphic xlink:href="1234-5678-rctb-45-05-0110-e01.tif"/>'
+        graphic_02 = '<inline-graphic xlink:href="1234-5678-rctb-45-05-0110-e02.tiff"/>'
+        xml_file = etree.fromstring(
+            BASE_XML.format(graphic_01, graphic_02).encode("utf-8"),
+            parser=etree.XMLParser(remove_blank_text=True),
         )
+        self.sp_package._optimise_xml_to_web(xml_file, "somedocument.xml")
         self.assertTrue(
             os.path.exists(os.path.join(self.extracted_package, "somedocument.xml"))
         )
